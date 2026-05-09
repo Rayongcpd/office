@@ -182,48 +182,59 @@ function fmtMoney(n) {
 }
 
 // ============================================================
-// API WRAPPER
+// API WRAPPER (JSONP — CORS-free for Google Apps Script)
 // ============================================================
-async function callGas(module, funcName, args) {
+function callGas(module, funcName, args) {
   const mod = APP.modules[module];
-  if (!mod) throw new Error('Unknown module: ' + module);
+  if (!mod) return Promise.reject(new Error('Unknown module: ' + module));
 
   const url = `https://script.google.com/macros/s/${mod.url}/exec`;
   const params = new URLSearchParams();
   params.append('func', funcName);
   if (args) params.append('args', JSON.stringify(args));
 
-  // Primary: GET (CORS-free with Google Apps Script)
-  try {
-    const response = await fetch(url + '?' + params.toString(), {
-      method: 'GET'
-    });
-    return await response.json();
-  } catch (e) {
-    // Fallback: JSONP for older browsers or strict CSP
-    return new Promise((resolve, reject) => {
-      const cbName = '_cb_' + Date.now();
-      const script = document.createElement('script');
-      params.append('callback', cbName);
+  return new Promise((resolve, reject) => {
+    const cbName = '_cb_' + Date.now();
+    const script = document.createElement('script');
+    const fullUrl = url + '?' + params.toString() + '&callback=' + cbName;
 
-      window[cbName] = function(data) {
-        delete window[cbName];
-        document.head.removeChild(script);
-        resolve(data);
-      };
-      script.onerror = () => {
-        delete window[cbName];
-        reject(new Error('Script load error'));
-      };
-      script.src = url + '?' + params.toString();
-      document.head.appendChild(script);
+    console.log('[callGas] JSONP:', fullUrl);
 
+    window[cbName] = function(data) {
+      console.log('[callGas] response:', data);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve(data);
+    };
+
+    script.onload = function() {
+      // If script loaded but callback never fired, it's likely an Apps Script auth error
       setTimeout(() => {
+        if (window[cbName]) {
+          delete window[cbName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          reject(new Error('Apps Script returned no data. Please check: 1) Script is deployed as Web App with "Anyone" access. 2) Open the script URL in browser first to authorize.'));
+        }
+      }, 2000);
+    };
+
+    script.onerror = function() {
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      reject(new Error('Script load error. URL: ' + fullUrl));
+    };
+
+    script.src = fullUrl;
+    document.head.appendChild(script);
+
+    setTimeout(() => {
+      if (window[cbName]) {
         delete window[cbName];
-        reject(new Error('Timeout'));
-      }, 30000);
-    });
-  }
+        if (script.parentNode) script.parentNode.removeChild(script);
+        reject(new Error('Request timeout (>30s)'));
+      }
+    }, 30000);
+  });
 }
 
 // ============================================================
