@@ -194,7 +194,7 @@ function callGas(module, funcName, args) {
   if (args) params.append('args', JSON.stringify(args));
 
   return new Promise((resolve, reject) => {
-    const cbName = '_cb_' + Date.now();
+    const cbName = '_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
     const script = document.createElement('script');
     const fullUrl = url + '?' + params.toString() + '&callback=' + cbName;
 
@@ -241,28 +241,20 @@ function callGas(module, funcName, args) {
 // DASHBOARD
 // ============================================================
 async function loadDashboard() {
-  // Parallel load stats from all 3 backends
   try {
-    const [planning, procurement, eoffice] = await Promise.allSettled([
-      callGas('planning', 'getPlanDashboardData', [APP.sessionId]).catch(() => null),
-      callGas('procurement', 'getDashboardData', [APP.sessionId]).catch(() => null),
-      callGas('eoffice', 'getDashboardStats', [APP.sessionId]).catch(() => null)
-    ]);
-
-    if (planning.value) {
-      document.getElementById('dashPlanningProjects').textContent = fmtNum(planning.value.total_projects || 0);
-      document.getElementById('dashPlanningBudget').textContent = fmtMoney(planning.value.total_budget || 0);
-    }
-    if (procurement.value) {
-      document.getElementById('dashProcurementPlans').textContent = fmtNum(procurement.value.total_plans || 0);
-      document.getElementById('dashProcurementContracts').textContent = fmtNum(procurement.value.active_contracts || 0);
-    }
-    if (eoffice.value) {
-      document.getElementById('dashEofficeDocs').textContent = fmtNum(eoffice.value.pending_docs || 0);
-      document.getElementById('dashEofficeMeetings').textContent = fmtNum(eoffice.value.today_meetings || 0);
+    const stats = await callGas('eoffice', 'getDashboardStats', [APP.sessionId]);
+    if (stats) {
+      document.getElementById('dashPlanningProjects').textContent = fmtNum(stats.total_projects || 0);
+      document.getElementById('dashPlanningBudget').textContent = fmtMoney(stats.total_budget || 0);
+      
+      document.getElementById('dashProcurementPlans').textContent = fmtNum(stats.total_plans || 0);
+      document.getElementById('dashProcurementContracts').textContent = fmtNum(stats.active_contracts || 0);
+      
+      document.getElementById('dashEofficeDocs').textContent = fmtNum(stats.pending_docs || 0);
+      document.getElementById('dashEofficeMeetings').textContent = fmtNum(stats.today_meetings || 0);
     }
   } catch (e) {
-    console.log('Dashboard partial load', e);
+    console.log('Dashboard load error', e);
   }
 
   renderMiniCalendar();
