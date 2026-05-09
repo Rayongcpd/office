@@ -10,9 +10,9 @@ const APP = {
   currentPage: 'dashboard',
   config: {},
   modules: {
-    planning: { url: 'AKfycbzuazsPOhqQSsGGE_4z7-7da_B2jeExju3yqL4qdqGDevncAxNq4hYcW_DQsldxtFXz', label: 'นโยบายและแผน' },
-    procurement: { url: 'AKfycbxel493r7o_jM0DVXFtkzuBEulJ9lksx-oyTZmsM3p5jdXriTLkBe10loXKnHj4LMDngQ', label: 'บริหารงานพัสดุ' },
-    eoffice: { url: 'AKfycbw2ah7tHfgyYQZ7FnOJ-FVm-C7yBJKgJ3paxsNS7Rh1a6V9XUhVbsZj1XF__hrUMvCz', label: 'e-Office' }
+    planning: { url: 'AKfycbyF9dpyV6e9p5GwoqlsKAEhdqc2rtsnJ5Y05E24QnLzLjqYhnktemXxMXFKSvt1BRxRag', label: 'นโยบายและแผน' },
+    procurement: { url: 'AKfycbyF9dpyV6e9p5GwoqlsKAEhdqc2rtsnJ5Y05E24QnLzLjqYhnktemXxMXFKSvt1BRxRag', label: 'บริหารงานพัสดุ' },
+    eoffice: { url: 'AKfycbyF9dpyV6e9p5GwoqlsKAEhdqc2rtsnJ5Y05E24QnLzLjqYhnktemXxMXFKSvt1BRxRag', label: 'e-Office' }
   }
 };
 
@@ -189,23 +189,21 @@ async function callGas(module, funcName, args) {
   if (!mod) throw new Error('Unknown module: ' + module);
 
   const url = `https://script.google.com/macros/s/${mod.url}/exec`;
+  const params = new URLSearchParams();
+  params.append('func', funcName);
+  if (args) params.append('args', JSON.stringify(args));
 
-  // Try native fetch first (modern browsers)
+  // Primary: GET (CORS-free with Google Apps Script)
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ func: funcName, args: args || [] })
+    const response = await fetch(url + '?' + params.toString(), {
+      method: 'GET'
     });
     return await response.json();
   } catch (e) {
-    // Fallback: JSONP-style or form-based if CORS blocked
+    // Fallback: JSONP for older browsers or strict CSP
     return new Promise((resolve, reject) => {
       const cbName = '_cb_' + Date.now();
       const script = document.createElement('script');
-      const params = new URLSearchParams();
-      params.append('func', funcName);
-      if (args) params.append('args', JSON.stringify(args));
       params.append('callback', cbName);
 
       window[cbName] = function(data) {
