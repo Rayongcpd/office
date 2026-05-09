@@ -434,6 +434,10 @@
         <div class="sidebar-item" data-page="eoffice" onclick="navigateTo('eoffice')">
           <i class="fas fa-file-alt"></i> <span>e-Office</span>
         </div>
+        <div class="sidebar-item" data-page="workflow" onclick="navigateTo('workflow')">
+          <i class="fas fa-tasks"></i> <span>Workflow รอดำเนินการ</span>
+          <span id="workflowBadge" class="hidden ml-auto w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold"></span>
+        </div>
 
         <div class="sidebar-group-label mt-2">จัดการระบบ</div>
         <div class="sidebar-item" data-page="settings" onclick="navigateTo('settings')">
@@ -632,6 +636,9 @@
               <p class="text-sm font-semibold text-ink-700">สัญญา</p>
             </button>
           </div>
+          <div class="flex flex-wrap items-center gap-2 mb-4">
+            <button onclick="showSubmitProcurement()" class="claude-btn claude-btn-cream text-xs py-2 px-3"><i class="fas fa-plus text-xs"></i> ขอจัดซื้อ/จัดจ้าง</button>
+          </div>
           <div id="procurementContent" class="claude-card p-6 min-h-[300px]">
             <div class="text-center py-12 text-ink-300 text-sm">เลือกเมนูเพื่อดำเนินการ</div>
           </div>
@@ -669,8 +676,91 @@
               <p class="text-sm font-semibold text-ink-700">การประชุม</p>
             </button>
           </div>
+          <div class="flex flex-wrap items-center gap-2 mb-4">
+            <button onclick="showSubmitDocument('incoming')" class="claude-btn claude-btn-cream text-xs py-2 px-3"><i class="fas fa-plus text-xs"></i> เอกสารรับ</button>
+            <button onclick="showSubmitDocument('outgoing')" class="claude-btn claude-btn-cream text-xs py-2 px-3"><i class="fas fa-plus text-xs"></i> เอกสารส่ง</button>
+            <button onclick="showSubmitLeave()" class="claude-btn claude-btn-cream text-xs py-2 px-3"><i class="fas fa-plus text-xs"></i> ใบลา</button>
+            <button onclick="showSubmitMeeting()" class="claude-btn claude-btn-cream text-xs py-2 px-3"><i class="fas fa-plus text-xs"></i> จองห้องประชุม</button>
+          </div>
           <div id="eofficeContent" class="claude-card p-6 min-h-[300px]">
             <div class="text-center py-12 text-ink-300 text-sm">เลือกเมนูเพื่อดำเนินการ</div>
+          </div>
+        </div>
+
+        <!-- Workflow -->
+        <div id="page-workflow" class="page-section">
+          <div class="mb-6">
+            <h2 class="font-serif text-2xl font-semibold text-ink-900">Workflow รอดำเนินการ</h2>
+            <p class="text-sm text-ink-400 mt-2">รายการรออนุมัติและประวัติคำขอ</p>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+            <div class="claude-card p-5 cursor-pointer" onclick="workflowShowTab('pending')">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <i class="fas fa-clock text-amber-600 text-sm"></i>
+                </div>
+                <div>
+                  <p class="text-xs text-ink-500">รอดำเนินการ</p>
+                  <p id="wfStatPending" class="text-lg font-bold text-ink-700 stat-value">0</p>
+                </div>
+              </div>
+            </div>
+            <div class="claude-card p-5 cursor-pointer" onclick="workflowShowTab('myrequests')">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <i class="fas fa-paper-plane text-blue-600 text-sm"></i>
+                </div>
+                <div>
+                  <p class="text-xs text-ink-500">คำขอของฉัน</p>
+                  <p id="wfStatMyReq" class="text-lg font-bold text-ink-700 stat-value">0</p>
+                </div>
+              </div>
+            </div>
+            <div class="claude-card p-5 cursor-pointer" onclick="workflowShowTab('history')">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                  <i class="fas fa-check-double text-emerald-600 text-sm"></i>
+                </div>
+                <div>
+                  <p class="text-xs text-ink-500">เสร็จสิ้น/ยกเลิก</p>
+                  <p id="wfStatDone" class="text-lg font-bold text-ink-700 stat-value">0</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="claude-card overflow-hidden">
+            <div class="flex items-center gap-1 p-3 border-b border-ink-100">
+              <button onclick="workflowShowTab('pending')" id="wfTabPending" class="wf-tab px-4 py-2 rounded-xl text-sm font-medium transition bg-ink-800 text-white">รอดำเนินการ</button>
+              <button onclick="workflowShowTab('myrequests')" id="wfTabMyReq" class="wf-tab px-4 py-2 rounded-xl text-sm font-medium transition text-ink-500 hover:bg-ink-50">คำขอของฉัน</button>
+              <button onclick="workflowShowTab('history')" id="wfTabHistory" class="wf-tab px-4 py-2 rounded-xl text-sm font-medium transition text-ink-500 hover:bg-ink-50">ประวัติ</button>
+            </div>
+            <div id="workflowContent" class="p-5">
+              <div class="text-center py-10 text-ink-400 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i>กำลังโหลด...</div>
+            </div>
+          </div>
+
+          <!-- Workflow Detail Modal -->
+          <div id="workflowDetailModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeWorkflowDetail()"></div>
+            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto animate-scaleIn">
+              <div class="sticky top-0 bg-white border-b border-ink-100 px-6 py-4 flex items-center justify-between z-10">
+                <h3 id="wfDetailTitle" class="font-serif text-lg font-semibold text-ink-800">รายละเอียด Workflow</h3>
+                <button onclick="closeWorkflowDetail()" class="p-2 rounded-xl hover:bg-ink-50 text-ink-400 transition"><i class="fas fa-xmark"></i></button>
+              </div>
+              <div id="workflowDetailBody" class="p-6 space-y-5">
+                <!-- dynamic -->
+              </div>
+              <div id="workflowDetailActions" class="px-6 pb-6 flex gap-3 justify-end hidden">
+                <button onclick="actWorkflow('reject')" class="claude-btn claude-btn-ghost border-red-200 text-red-600 hover:bg-red-50">
+                  <i class="fas fa-xmark text-xs"></i> ไม่อนุมัติ
+                </button>
+                <button onclick="actWorkflow('approved')" class="claude-btn claude-btn-primary bg-emerald-700 hover:bg-emerald-800">
+                  <i class="fas fa-check text-xs"></i> อนุมัติ
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
